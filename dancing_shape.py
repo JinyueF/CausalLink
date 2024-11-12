@@ -1,4 +1,7 @@
 import networkx as nx
+import torch
+from transformers import pipeline
+
 
 import random
 import json
@@ -174,25 +177,30 @@ class ShapeWorld(CausalWorld):
 
 
     def generate_prompt(self, model, parsed_response):
-        if model == "human":
-            if not parsed_response:
-                prompt = '\n'.join([self.prompt_templates['system'],
-                                  self.prompt_templates['question'].format(
-                                    self.current_question, str(self.shapes), str(self.actions)),
-                                  self.prompt_templates['json_format']
-                                  ])
-            else:
-                changes = self.apply_intervention(parsed_response['shape'], parsed_response['action'])
-                prompt = '\n'.join([' '.join(change) for change in changes])
-                prompt = '\n'.join([prompt, 
-                                    self.prompt_templates['question'].format(
-                                    self.current_question, str(self.shapes), str(self.actions)),
-                                  self.prompt_templates['json_format']])
+        first_section_prompt = self.prompt_templates['system'] # system prompt
+        question_prompt = self.prompt_templates['question'].format(
+                                    self.current_question, str(self.shapes), str(self.actions))
+        json_prompt = self.prompt_templates['json_format']
+        if parsed_response:
+            changes = self.apply_intervention(parsed_response['shape'], parsed_response['action'])
+            first_section_prompt = '\n'.join([' '.join(change) for change in changes])
+        else:
+            first_section_prompt = ''
         
+        if model == "human":
+            prompt = '\n'.join(first_section_prompt, question_prompt, json_prompt)
+        elif model.startwith('hf'):
+            if not parsed_response:
+                prompt = [
+                    {"role": "system", "content": first_section_prompt}, 
+                    {"role": "user", "content": '\n'.join(question_prompt, json_prompt)}]
+            else:
+                prompt = {"role": "user", "content": '\n'.join(first_section_prompt, question_prompt, json_prompt)}
+  
         return prompt
     
 
-    def collect_response(self, model, prompt):
+    def collect_response(self, model, prompt, pipe):
 
         if model == 'human':
             response = input(prompt).lower()
@@ -202,11 +210,19 @@ class ShapeWorld(CausalWorld):
                 response = input("Invalid input, please try again").lower()
                 parsed = self.parse_intervention(response)
                 step += 1
+        elif model.startwith('hf'):
+            if type(prompt) is list:
+                self.chat = prompt
+            else:
+                self.chat.append(prompt)
+            raw_response = pipe(self.chat, max_new_token=512)
+            response = raw_response[0]['generated_text'][-1]['content']
+            parsed = self.parse_intervention(response)
 
         return parsed
                 
 
-    def interaction_loop(self, cause, effect, model):
+    def interaction_loop(self, cause, effect, model, model_path=None):
         """
         Performs interaction for the question does cause cause effect?
         """
@@ -215,15 +231,19 @@ class ShapeWorld(CausalWorld):
         self.current_question = "Does {} cause {}?".format(cause_text, effect_text)
         self.current_answer = self.check_causal_path(self.shape_changes.index(cause), self.shape_changes.index(effect))
 
+        if model.startwith('hf'):
+            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device_map="auto")
+        elif model == 'human':
+            pipe = None
         initial_prompt = self.generate_prompt(model, None)
-        response = self.collect_response(model, initial_prompt)
+        response = self.collect_response(model, initial_prompt, pipe)
         result = self.check_result(response)
         step = 1
         max_step = len(self.shapes) * len(self.actions)
 
         while response and result == 'pending' and step < max_step:
             prompt = self.generate_prompt(model, response)
-            response = self.collect_response(model, prompt)
+            response = self.collect_response(model, prompt, pipe)
             result = self.check_result(response)
             step += 1
         
