@@ -7,6 +7,8 @@ import random
 import json
 import re
 
+from prompt_templates import TEMPLATES
+
 class CausalWorld:
 
     def __init__(self, causal_structure, causal_flag=True, num_var=None) -> None:
@@ -88,34 +90,10 @@ class CausalWorld:
 
             
 class ShapeWorld(CausalWorld):
-    def __init__(self, causal_structure, causal_flag=True, num_var=None) -> None:
+    def __init__(self, causal_structure, prompt_template, causal_flag=True, num_var=None) -> None:
         super().__init__(causal_structure, causal_flag, num_var)
         self.generate_variables()
-        self.prompt_templates = {
-            'system': 
-            "You are in a world of shapes. The changes of shapes follow internal causal rules. \
-            You are required to interact with the shapes and answer a causal question. \
-            All changes in the world are deterministic and consistent. There is no hidden confounder. ",
-            'question':
-            "Question: {} \n \
-            Shape: {} \n \
-            Action: {} \n",
-            'json_format':
-            """Please provide your response for your chosen interaction in JSON format:
-
-            - The value to "shape" field must be one of the listed shapes
-            - The value to "action" field must be one of the listed actions
-            - If you are ready, answer the question with "yes" or "no" in the field "answer". \
-                Otherwise, fill the field with "next interaction"
-
-                {
-                "shape": "",
-                "action": "",
-                "answer": ""
-                }
-
-            """
-        }
+        self.prompt_templates = TEMPLATES[prompt_template]
     
 
     def generate_variables(self, actions=None, changes=None, shapes=None):
