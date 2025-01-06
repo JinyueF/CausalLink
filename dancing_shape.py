@@ -105,8 +105,7 @@ class ShapeWorld(CausalWorld):
 
             - The value to "shape" field must be one of the listed shapes
             - The value to "action" field must be one of the listed actions
-            - If you are ready, answer the question with "yes" or "no" in the field "answer". \
-                Otherwise, fill the field with "next interaction"
+            - The value to "answer" field must be yes, no, or pending
 
                 {
                 "shape": "",
@@ -184,18 +183,16 @@ class ShapeWorld(CausalWorld):
         if parsed_response:
             changes = self.apply_intervention(parsed_response['shape'], parsed_response['action'])
             first_section_prompt = '\n'.join([' '.join(change) for change in changes])
-        else:
-            first_section_prompt = ''
         
         if model == "human":
-            prompt = '\n'.join(first_section_prompt, question_prompt, json_prompt)
-        elif model.startwith('hf'):
+            prompt = '\n'.join([first_section_prompt, question_prompt, json_prompt])
+        elif model.startswith('hf'):
             if not parsed_response:
                 prompt = [
                     {"role": "system", "content": first_section_prompt}, 
-                    {"role": "user", "content": '\n'.join(question_prompt, json_prompt)}]
+                    {"role": "user", "content": '\n'.join([question_prompt, json_prompt])}]
             else:
-                prompt = {"role": "user", "content": '\n'.join(first_section_prompt, question_prompt, json_prompt)}
+                prompt = {"role": "user", "content": '\n'.join([first_section_prompt, question_prompt, json_prompt])}
   
         return prompt
     
@@ -210,13 +207,14 @@ class ShapeWorld(CausalWorld):
                 response = input("Invalid input, please try again").lower()
                 parsed = self.parse_intervention(response)
                 step += 1
-        elif model.startwith('hf'):
+        elif model.startswith('hf'):
             if type(prompt) is list:
                 self.chat = prompt
             else:
                 self.chat.append(prompt)
-            raw_response = pipe(self.chat, max_new_token=512)
+            raw_response = pipe(self.chat, max_new_tokens=512)
             response = raw_response[0]['generated_text'][-1]['content']
+            print(response)
             parsed = self.parse_intervention(response)
 
         return parsed
@@ -226,13 +224,14 @@ class ShapeWorld(CausalWorld):
         """
         Performs interaction for the question does cause cause effect?
         """
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         cause_text = ' '.join(cause)
         effect_text = ' '.join(effect)
         self.current_question = "Does {} cause {}?".format(cause_text, effect_text)
         self.current_answer = self.check_causal_path(self.shape_changes.index(cause), self.shape_changes.index(effect))
 
-        if model.startwith('hf'):
-            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device_map="auto")
+        if model.startswith('hf'):
+            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device=device)
         elif model == 'human':
             pipe = None
         initial_prompt = self.generate_prompt(model, None)
@@ -241,7 +240,7 @@ class ShapeWorld(CausalWorld):
         step = 1
         max_step = len(self.shapes) * len(self.actions)
 
-        while response and result == 'pending' and step < max_step:
+        while response and (not result or result == 'pending') and step < max_step:
             prompt = self.generate_prompt(model, response)
             response = self.collect_response(model, prompt, pipe)
             result = self.check_result(response)
@@ -251,6 +250,7 @@ class ShapeWorld(CausalWorld):
 
 
 if __name__ == '__main__':
-    s_world = ShapeWorld('random', True, 4)
-    result = s_world.interaction_loop(s_world.shape_changes[0], s_world.shape_changes[1], 'human')
+    s_world = ShapeWorld('random', True, 5)
+    print(nx.to_dict_of_dicts(s_world.causal_graph))
+    result = s_world.interaction_loop(s_world.shape_changes[0], s_world.shape_changes[1], 'hf-Llama3.2-1B', '/model-weights/Llama-3.2-1B-Instruct')
     print(result)
