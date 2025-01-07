@@ -95,6 +95,8 @@ class ShapeWorld(CausalWorld):
         self.prompt_templates = TEMPLATES[prompt_template]
         self.model = model
         self.current_shape_changes = {}
+        self.result = None
+        self.error_mode = None
     
 
     def generate_variables(self, actions=None, changes=None, shapes=None):
@@ -137,15 +139,18 @@ class ShapeWorld(CausalWorld):
 
         
     def apply_intervention(self, shape, action):
-        change = self.action_to_changes[shape][action]
-        if (shape, change) in self.shape_changes:
-            source_node = self.shape_changes.index((shape, change))
-            successors = nx.dfs_successors(self.causal_graph, source_node)
-            result = [self.shape_changes[i] for i in set(list(successors.keys()) + sum(list(successors.values()), []))]
+        if action not in self.actions:
+            self.error_mode = 'invalid action'
         else:
-            result = [(shape, change)]
-        
-        self.current_shape_changes[' '.join([action, shape])] = [item[0]+' '+item[1] for item in result]
+            change = self.action_to_changes[shape][action]
+            if (shape, change) in self.shape_changes:
+                source_node = self.shape_changes.index((shape, change))
+                successors = nx.dfs_successors(self.causal_graph, source_node)
+                result = [self.shape_changes[i] for i in set(list(successors.keys()) + sum(list(successors.values()), []))]
+            else:
+                result = [(shape, change)]
+            
+            self.current_shape_changes[' '.join([action, shape])] = [item[0]+' '+item[1] for item in result]
     
 
     def check_result(self, parsed_response):
@@ -162,7 +167,7 @@ class ShapeWorld(CausalWorld):
         )
 
 
-    def generate_prompt(self, state, parsed_response):
+    def generate_prompt(self, state):
 
         question_prompt = self.prompt_templates['question'].format(self.question)
         
@@ -233,7 +238,7 @@ class ShapeWorld(CausalWorld):
             else:
                 curr_state = 'choice'
         
-        prompt = self.generate_prompt(curr_state, last_response)
+        prompt = self.generate_prompt(curr_state)
         return curr_state, prompt
             
 
@@ -255,24 +260,30 @@ class ShapeWorld(CausalWorld):
             pipe = None
         
         curr_state = "initial"
-        initial_prompt = self.generate_prompt(curr_state, None)
+        initial_prompt = self.generate_prompt(curr_state)
         response = self.collect_response(initial_prompt, pipe)
         curr_state, prompt = self.interaction_step(curr_state, response)
         step = 0
         max_step = len(self.shapes) * len(self.actions)
 
         while response and curr_state != 'answer' and step < max_step:
+            print(prompt)
             response = self.collect_response(prompt, pipe)
             curr_state, prompt = self.interaction_step(curr_state, response)
             if curr_state == "interaction":
                 step += 1
 
-        if curr_state == 'answer':
-            result = self.check_result(self.collect_response(prompt, pipe))
+        if not response:
+            self.error_mode = "invalid format"
+            self.result = None
+        elif step == max_step and not self.error_mode:
+            self.error_mode = "too many attempts"
+            self.result = None
         else:
-            return None
+            self.result = self.check_result(self.collect_response(prompt, pipe))
         
-        return result
+        return self.error_mode, self.result
+
 
 def query_memory(verbose=False):
     nvidia_smi.nvmlInit()
@@ -291,6 +302,6 @@ def query_memory(verbose=False):
 
 if __name__ == '__main__':
     query_memory(True)
-    s_world = ShapeWorld('direct', 'basic_limit_steps', 'hf-mistral-7b', True, 5)
-    result = s_world.interaction_loop(s_world.shape_changes[0], s_world.shape_changes[1], '/model-weights/Mistral-7B-Instruct-v0.3')
+    s_world = ShapeWorld('direct', 'basic_limit_steps', 'hf-qwen-2.5-14b', True, 5)
+    result = s_world.interaction_loop(s_world.shape_changes[1], s_world.shape_changes[0], '/model-weights/Qwen2.5-14B-Instruct')
     print(result)

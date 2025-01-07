@@ -110,7 +110,7 @@ TEMPLATES = {
             You are required to interact with the shapes and answer a causal question. 
             All changes in the world are deterministic and consistent. There is no hidden confounder. 
             
-            Please provide a new JSON object for each of your reponse. Try to reach an answer with the least amount of interactions.""",
+            Please provide exactly one JSON object for each of your reponse. Try to reach an answer with the least amount of interactions.""",
         'question':
             """Question: {}""",
         'initial':
@@ -137,8 +137,8 @@ TEMPLATES = {
         'interaction':
             """Please propose your next interaction. Please provide your response by filling the JSON below:
             
-            - The value to "shape" field must be one of the listed shapes: %s
-            - The value to "action" field must be one of the listed actions: %s
+            - The value to "shape" field must be one of the listed shapes: {}
+            - The value to "action" field must be one of the listed actions: {}
 
             {{
             "shape":"",
