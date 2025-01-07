@@ -1,5 +1,6 @@
 import networkx as nx
 import torch
+import nvidia_smi
 from transformers import pipeline
 
 
@@ -163,12 +164,11 @@ class ShapeWorld(CausalWorld):
 
     def generate_prompt(self, state, parsed_response):
 
-        question_prompt = self.prompt_templates['question'].format(
-                                    self.question, str(self.shapes), str(self.actions))
+        question_prompt = self.prompt_templates['question'].format(self.question)
         
         if state == "initial":
             first_section_prompt = self.prompt_templates['system'] # system prompt
-            json_prompt = self.prompt_templates['initial']
+            json_prompt = self.prompt_templates['initial'].format(str(self.shapes), str(self.actions))
 
         elif state == "choice":
             first_section_prompt = self.format_current_changes()
@@ -176,20 +176,22 @@ class ShapeWorld(CausalWorld):
         
         elif state == 'interaction':
             first_section_prompt = ''
-            json_prompt = self.prompt_templates['interaction']
+            json_prompt = self.prompt_templates['interaction'].format(str(self.shapes), str(self.actions))
         
         elif state == 'answer':
             first_section_prompt = self.format_current_changes()
             json_prompt = self.prompt_templates['answer']
-            
         
         if self.model == "human":
             prompt = '\n'.join([first_section_prompt, question_prompt, json_prompt])
         elif self.model.startswith('hf'):
             if state == 'initial':
-                prompt = [
-                    {"role": "system", "content": first_section_prompt}, 
-                    {"role": "user", "content": '\n'.join([question_prompt, json_prompt])}]
+                if 'mistral' not in self.model:
+                    prompt = [
+                        {"role": "system", "content": first_section_prompt}, 
+                        {"role": "user", "content": '\n'.join([question_prompt, json_prompt])}]
+                else:
+                    prompt = [{"role": "user", "content": '\n'.join([first_section_prompt, question_prompt, json_prompt])}]
             else:
                 prompt = {"role": "user", "content": '\n'.join([first_section_prompt, question_prompt, json_prompt])}
   
@@ -228,6 +230,8 @@ class ShapeWorld(CausalWorld):
                 curr_state = 'interaction'
             elif last_response['next'] == 'answer the question':
                 curr_state = 'answer'
+            else:
+                curr_state = 'choice'
         
         prompt = self.generate_prompt(curr_state, last_response)
         return curr_state, prompt
@@ -254,13 +258,14 @@ class ShapeWorld(CausalWorld):
         initial_prompt = self.generate_prompt(curr_state, None)
         response = self.collect_response(initial_prompt, pipe)
         curr_state, prompt = self.interaction_step(curr_state, response)
-        step = 1
+        step = 0
         max_step = len(self.shapes) * len(self.actions)
 
         while response and curr_state != 'answer' and step < max_step:
             response = self.collect_response(prompt, pipe)
             curr_state, prompt = self.interaction_step(curr_state, response)
-            step += 1
+            if curr_state == "interaction":
+                step += 1
 
         if curr_state == 'answer':
             result = self.check_result(self.collect_response(prompt, pipe))
@@ -269,9 +274,23 @@ class ShapeWorld(CausalWorld):
         
         return result
 
+def query_memory(verbose=False):
+    nvidia_smi.nvmlInit()
+    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
+    # card id 0 hardcoded here, there is also a call to get all available card ids, so we could iterate
+
+    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
+
+    bytes_to_GB = 10**9
+    total, free, used = info.total / bytes_to_GB, info.free / bytes_to_GB, info.used / bytes_to_GB
+    nvidia_smi.nvmlShutdown()
+    
+    if verbose:
+        print("Total memory {:.2f} GB, free {:.2f} GB, used {:.2f} GB".format(total, free, used))
+    return total, free, used
 
 if __name__ == '__main__':
-    s_world = ShapeWorld('direct', 'basic', 'human', True, 5)
-    print(nx.to_dict_of_dicts(s_world.causal_graph))
-    result = s_world.interaction_loop(s_world.shape_changes[0], s_world.shape_changes[1], '/model-weights/Llama-3.2-1B-Instruct')
+    query_memory(True)
+    s_world = ShapeWorld('direct', 'basic_limit_steps', 'hf-mistral-7b', True, 5)
+    result = s_world.interaction_loop(s_world.shape_changes[0], s_world.shape_changes[1], '/model-weights/Mistral-7B-Instruct-v0.3')
     print(result)
