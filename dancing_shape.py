@@ -12,7 +12,7 @@ from prompt_templates import TEMPLATES
 
 class CausalWorld:
 
-    def __init__(self, causal_structure, causal_flag=True, num_var=None) -> None:
+    def __init__(self, causal_structure, num_var=None) -> None:
         """
         causal_structure: specified structure for hardcoded graphs or random for a random graph
         causal_flag: flags whether there is a causal relation between 0 and -1 in collision/confounder graphs
@@ -20,7 +20,6 @@ class CausalWorld:
         """
         self.causal_structure = causal_structure
         self.causal_graph = nx.DiGraph()
-        self.causal_flag = causal_flag # Flags whether there is a causal relation between the variables of interest 
 
         self.structure_to_num = {
             'direct': 2,
@@ -89,9 +88,9 @@ class CausalWorld:
 
             
 class ShapeWorld(CausalWorld):
-    def __init__(self, causal_structure, prompt_template, model, causal_flag=True, num_var=None) -> None:
-        super().__init__(causal_structure, causal_flag, num_var)
-        self.generate_variables()
+    def __init__(self, causal_structure, prompt_template, model, actions=None, changes=None, shapes=None, num_var=None) -> None:
+        super().__init__(causal_structure, num_var)
+        self.generate_variables(actions, changes, shapes)
         self.prompt_templates = TEMPLATES[prompt_template]
         self.model = model
         self.current_shape_changes = {}
@@ -99,7 +98,7 @@ class ShapeWorld(CausalWorld):
         self.error_mode = None
     
 
-    def generate_variables(self, actions=None, changes=None, shapes=None):
+    def generate_variables(self, actions, changes, shapes):
         """
         Stores an action dictionary recording changes to shapes after an action (intervention) and 
         a change dictiionary containing shapes and changes to be used with the causal graph. 
