@@ -71,12 +71,12 @@ def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('data_path', type=str, default='./data/test_df.csv')
-    parser.add_argument('result_path', type=str, default='./results/test_result.csv')
-    parser.add_argument('model', type=str)
-    parser.add_argument('model_path', type=str)
-    parser.add_argument('num_rep', type=int, default=1)
-    parser.add_argument('prompt_template', type=str, default='basic_limit_steps')
+    parser.add_argument('--data_path', type=str, default='./data/test_df.csv')
+    parser.add_argument('--result_path', type=str, default='./results/test_result.csv')
+    parser.add_argument('--model', type=str)
+    parser.add_argument('--model_path', type=str)
+    parser.add_argument('--num_rep', type=int, default=1)
+    parser.add_argument('--prompt_template', type=str, default='basic_limit_steps')
 
     args = parser.parse_args()
 
