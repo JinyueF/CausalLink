@@ -47,7 +47,7 @@ class CausalWorld:
         elif self.causal_structure == 'mediation':
             # A --> B --> C
             self.causal_graph.add_edge(self.var_list[0], self.var_list[1])
-            self.cause_graph.add_edge(self.var_list[1], self.var_list[2])
+            self.causal_graph.add_edge(self.var_list[1], self.var_list[2])
             self.cause_variable = self.var_list[0]
             self.effect_variable = self.var_list[2]
         elif self.causal_structure == 'confounder':
@@ -153,11 +153,15 @@ class ShapeWorld(CausalWorld):
     
 
     def check_result(self, parsed_response):
-        result = parsed_response['answer']
-        if result in ['yes', 'no']:
-            return (self.answer and result == 'yes') or (not self.answer and result == 'no')
-        else:
-            return None
+        try:
+            result = parsed_response['answer']
+            if result in ['yes', 'no']:
+                return (self.answer and result == 'yes') or (not self.answer and result == 'no')
+            else:
+                return None
+        except KeyError:
+            pass
+        return None
         
 
     def format_current_changes(self):
@@ -219,7 +223,6 @@ class ShapeWorld(CausalWorld):
                 self.chat.append(prompt)
             raw_response = pipe(self.chat, max_new_tokens=512)
             response = raw_response[0]['generated_text'][-1]['content']
-            print(response)
             parsed = self.parse_intervention(response)
 
         return parsed
@@ -266,7 +269,6 @@ class ShapeWorld(CausalWorld):
         max_step = len(self.shapes) * len(self.actions)
 
         while response and curr_state != 'answer' and step < max_step:
-            print(prompt)
             response = self.collect_response(prompt, pipe)
             curr_state, prompt = self.interaction_step(curr_state, response)
             if curr_state == "interaction":
@@ -280,6 +282,8 @@ class ShapeWorld(CausalWorld):
             self.result = None
         else:
             self.result = self.check_result(self.collect_response(prompt, pipe))
+            if self.result is None:
+                self.error_mode = "invalid answer"
         
         return self.error_mode, self.result
 
