@@ -298,9 +298,3 @@ def query_memory(verbose=False):
     if verbose:
         print("Total memory {:.2f} GB, free {:.2f} GB, used {:.2f} GB".format(total, free, used))
     return total, free, used
-
-if __name__ == '__main__':
-    query_memory(True)
-    s_world = ShapeWorld('direct', 'basic_limit_steps', 'hf-qwen-2.5-14b', True, 5)
-    result = s_world.interaction_loop(s_world.shape_changes[1], s_world.shape_changes[0], '/model-weights/Qwen2.5-14B-Instruct')
-    print(result)
