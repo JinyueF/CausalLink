@@ -1,3 +1,4 @@
+import itertools
 import networkx as nx
 import torch
 import nvidia_smi
@@ -84,7 +85,7 @@ class CausalWorld:
             pass
         
         return json_object
-
+    
 
             
 class ShapeWorld(CausalWorld):
@@ -93,10 +94,10 @@ class ShapeWorld(CausalWorld):
         self.generate_variables(actions, changes, shapes)
         self.prompt_templates = TEMPLATES[prompt_template]
         self.model = model
-        self.current_shape_changes = {}
+        self.active_shapes = []
         self.result = None
         self.error_mode = None
-    
+
 
     def generate_variables(self, actions, changes, shapes):
         """
@@ -107,9 +108,9 @@ class ShapeWorld(CausalWorld):
             shapes = ["circle", "square", "triangle", "rectangle", "hexagon", "pentagon", \
                     "octagon", "ellipse"]
         if not actions:
-            actions = ['touch', 'push']
+            actions = ['move', 'hold']
         if not changes:
-            changes = ['enlarging', 'moving']
+            changes = ['moving']
         
         self.actions = actions
         self.changes = changes
@@ -118,38 +119,34 @@ class ShapeWorld(CausalWorld):
         self.shape_changes = []
         for shape in self.shapes:
             self.shape_changes.append((shape, random.choice(changes)))
-
-        action_to_changes = {}
-        for shape in self.shapes:
-            shape_dict = {}
-            for action in actions:
-                shape_dict[action] = random.choice(changes+['not changing'])
-            action_to_changes[shape] = shape_dict
-
-        # Ensure shape changes with no incoming edges can be initiated by a valid action
-        root_nodes = [node for node in self.causal_graph if self.causal_graph.in_degree(node) == 0]
-        for i in root_nodes:
-            shape, change = self.shape_changes[i]
-            if change not in action_to_changes[shape].values():
-                key = random.choice(actions)
-                action_to_changes[shape][key] = change
-        
-        self.action_to_changes = action_to_changes
-
+                
         
     def apply_intervention(self, shape, action):
-        if action not in self.actions:
+        if shape not in self.shapes or action not in self.actions:
             self.error_mode = 'invalid action'
+            return
+        
+        source_node = self.shapes.index((shape))
+        if action == 'move':
+            successors = nx.descendants(self.causal_graph, source_node)
+            self.active_shapes.append(source_node)
+            self.active_shapes.extend(list(successors))
+            self.active_shapes = list(set(self.active_shapes))
         else:
-            change = self.action_to_changes[shape][action]
-            if (shape, change) in self.shape_changes:
-                source_node = self.shape_changes.index((shape, change))
-                successors = nx.dfs_successors(self.causal_graph, source_node)
-                result = [self.shape_changes[i] for i in set(list(successors.keys()) + sum(list(successors.values()), []))]
-            else:
-                result = [(shape, change)]
+            self.deactivate_node(source_node)
+
+
+    def deactivate_node(self, node):
+        def has_active_parent(node):
+            parents = list(self.causal_graph.predecessors(node))
+            return any(parent in self.active_shapes for parent in parents)
             
-            self.current_shape_changes[' '.join([action, shape])] = [item[0]+' '+item[1] for item in result]
+        if not has_active_parent(node):
+            self.active_shapes.remove(node)
+        
+            for child in self.causal_graph.successors(node):
+                if not has_active_parent(child):
+                    self.deactivate_node(child)
     
 
     def check_result(self, parsed_response):
@@ -165,9 +162,14 @@ class ShapeWorld(CausalWorld):
         
 
     def format_current_changes(self):
-        return '\n'.join(
-            [": ".join([key, ', '.join(value)]) for key, value in self.current_shape_changes.items()]
-        )
+        # Create a dictionary of shape statuses
+        current_shape_changes = {
+            s: 'moving' if idx in self.active_shapes else 'static'
+            for idx, s in enumerate(self.shapes)
+        }
+
+        # Format the changes into a readable string
+        return '\n'.join([f"{key} is {value}" for key, value in current_shape_changes.items()])
 
 
     def generate_prompt(self, state):
@@ -176,7 +178,7 @@ class ShapeWorld(CausalWorld):
         
         if state == "initial":
             first_section_prompt = self.prompt_templates['system'] # system prompt
-            json_prompt = self.prompt_templates['initial'].format(str(self.shapes), str(self.actions))
+            json_prompt = self.prompt_templates['initial'].format(self.format_current_changes(), str(self.shapes), str(self.actions))
 
         elif state == "choice":
             first_section_prompt = self.format_current_changes()
@@ -244,17 +246,15 @@ class ShapeWorld(CausalWorld):
         return curr_state, prompt
             
 
-    def interaction_loop(self, cause, effect, model_path=None):
+    def interaction_loop(self, initial_active_shapes, cause, effect, model_path=None):
         """
         Performs interaction for the question does cause cause effect?
         """
+        self.active_shapes = initial_active_shapes
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         model = self.model
-
-        cause_text = ' '.join(cause)
-        effect_text = ' '.join(effect)
-        self.question = "Does {} cause {}?".format(cause_text, effect_text)
-        self.answer = self.check_causal_path(self.shape_changes.index(cause), self.shape_changes.index(effect))
+        self.question = "Does {} moving cause {} to move?".format(cause, effect)
+        self.answer = self.check_causal_path(self.shapes.index(cause), self.shapes.index(effect))
 
         if model.startswith('hf'):
             pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device=device)
@@ -264,15 +264,14 @@ class ShapeWorld(CausalWorld):
         curr_state = "initial"
         initial_prompt = self.generate_prompt(curr_state)
         response = self.collect_response(initial_prompt, pipe)
-        curr_state, prompt = self.interaction_step(curr_state, response)
         step = 0
         max_step = len(self.shapes) * len(self.actions)
 
         while response and curr_state != 'answer' and step < max_step:
-            response = self.collect_response(prompt, pipe)
             curr_state, prompt = self.interaction_step(curr_state, response)
             if curr_state == "interaction":
                 step += 1
+            response = self.collect_response(prompt, pipe)
 
         if not response:
             self.error_mode = "invalid format"
@@ -285,7 +284,39 @@ class ShapeWorld(CausalWorld):
             if self.result is None:
                 self.error_mode = "invalid answer"
         
-        return self.error_mode, self.result
+        return self.error_mode, self.result, step
+    
+
+    def get_initial_setups(self):
+        nodes = list(self.causal_graph.nodes())
+        node_and_descendants = [
+            [n] + list(nx.descendants(self.causal_graph, n)) for n in nodes]
+        
+        setups = []
+        for i in range(len(node_and_descendants)):
+            print(list(itertools.combinations(node_and_descendants, i)))
+            setups.extend(list(itertools.combinations(node_and_descendants, i)))
+        
+        for i in range(len(setups)):
+            setups[i] = frozenset(itertools.chain(*setups[i]))
+        
+        return set(setups)
+        
+
+    def run_experiment(self, model_path=None):
+        setups = self.get_initial_setups()
+        result_table = {'setup':[], 'cause':[], 'effect':[], 'error':[], 'result':[], 'step':[]}
+        for setup in setups:
+            for (var_1, var_2) in itertools.combinations(self.shapes, 2):
+                for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
+                    error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
+                    result_table['setup'].append(setup)
+                    result_table['cause'].append(cause)
+                    result_table['error'].append(error)
+                    result_table['result'].append(result)
+                    result_table['step'].append(step)
+        return result_table
+
 
 
 def query_memory(verbose=False):
@@ -302,3 +333,7 @@ def query_memory(verbose=False):
     if verbose:
         print("Total memory {:.2f} GB, free {:.2f} GB, used {:.2f} GB".format(total, free, used))
     return total, free, used
+
+test = ShapeWorld('direct', 'basic', 'human')
+result = test.run_experiment()
+print(result)
