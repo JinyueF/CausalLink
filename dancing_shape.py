@@ -1,7 +1,6 @@
 import itertools
 import networkx as nx
 import torch
-import nvidia_smi
 from transformers import pipeline
 
 
@@ -13,7 +12,7 @@ from prompt_templates import TEMPLATES
 
 class CausalWorld:
 
-    def __init__(self, causal_structure, num_var=None) -> None:
+    def __init__(self, causal_structure, causal_flag, num_var=None) -> None:
         """
         causal_structure: specified structure for hardcoded graphs or random for a random graph
         causal_flag: flags whether there is a causal relation between 0 and -1 in collision/confounder graphs
@@ -21,11 +20,12 @@ class CausalWorld:
         """
         self.causal_structure = causal_structure
         self.causal_graph = nx.DiGraph()
+        self.causal_flag = causal_flag
 
         self.structure_to_num = {
             'direct': 2,
             'mediation': 3,
-            'collision': 3, 
+            'collider': 3, 
             'confounder': 3,
             'random': num_var
         }
@@ -89,8 +89,8 @@ class CausalWorld:
 
             
 class ShapeWorld(CausalWorld):
-    def __init__(self, causal_structure, prompt_template, model, actions=None, changes=None, shapes=None, num_var=None) -> None:
-        super().__init__(causal_structure, num_var)
+    def __init__(self, causal_structure, causal_flag, prompt_template, model, actions=None, changes=None, shapes=None, num_var=None) -> None:
+        super().__init__(causal_structure, causal_flag, num_var)
         self.generate_variables(actions, changes, shapes)
         self.prompt_templates = TEMPLATES[prompt_template]
         self.model = model
@@ -305,35 +305,17 @@ class ShapeWorld(CausalWorld):
 
     def run_experiment(self, model_path=None):
         setups = self.get_initial_setups()
-        result_table = {'setup':[], 'cause':[], 'effect':[], 'error':[], 'result':[], 'step':[]}
+        result_table = {'setup':[], 'cause':[], 'effect':[], 'ground_truth':[],
+                        'error':[], 'result':[], 'n_step':[]}
         for setup in setups:
             for (var_1, var_2) in itertools.combinations(self.shapes, 2):
                 for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
                     error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
                     result_table['setup'].append(setup)
                     result_table['cause'].append(cause)
+                    result_table['effect'].append(effect)
+                    result_table['ground_truth'].append(self.answer)
                     result_table['error'].append(error)
                     result_table['result'].append(result)
-                    result_table['step'].append(step)
+                    result_table['n_step'].append(step)
         return result_table
-
-
-
-def query_memory(verbose=False):
-    nvidia_smi.nvmlInit()
-    handle = nvidia_smi.nvmlDeviceGetHandleByIndex(0)
-    # card id 0 hardcoded here, there is also a call to get all available card ids, so we could iterate
-
-    info = nvidia_smi.nvmlDeviceGetMemoryInfo(handle)
-
-    bytes_to_GB = 10**9
-    total, free, used = info.total / bytes_to_GB, info.free / bytes_to_GB, info.used / bytes_to_GB
-    nvidia_smi.nvmlShutdown()
-    
-    if verbose:
-        print("Total memory {:.2f} GB, free {:.2f} GB, used {:.2f} GB".format(total, free, used))
-    return total, free, used
-
-test = ShapeWorld('direct', 'basic', 'human')
-result = test.run_experiment()
-print(result)

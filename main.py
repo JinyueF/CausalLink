@@ -9,7 +9,7 @@ from ast import literal_eval
 
 from dancing_shape import ShapeWorld
 
-def generate_dataset(structures, all_actions, all_changes, all_shapes):
+def generate_dataset(structures, all_shapes):
     """
     Returns a dataframe containing dataset parameters. 
 
@@ -18,7 +18,7 @@ def generate_dataset(structures, all_actions, all_changes, all_shapes):
     max_num_actions: maximum number of possible actions
     ...
     """
-    columns = ['structure', 'actions', 'changes', 'shapes', 'num_var']
+    columns = ['structure', 'causal_flag', 'shapes', 'num_var']
     data = []
     structure_to_num = {
             'direct': 2,
@@ -26,19 +26,19 @@ def generate_dataset(structures, all_actions, all_changes, all_shapes):
             'confounder': 3}
     
     for structure in structures:
-        for (i, j) in itertools.product(range(1, len(all_actions)+1), range(1, len(all_changes)+1)):
-            actions = random.sample(all_actions, i)
-            changes = random.sample(all_changes, j)
-            if structure != 'random':
-
-                num_var = structure_to_num[structure]
+            
+        if structure != 'random':
+            num_var = structure_to_num[structure]
+            shapes = random.sample(all_shapes, num_var)
+            data.append([structure, True, shapes, num_var])
+            if structure == 'confounder':
+                data.append([structure, False, shapes, num_var])
+        
+        else:
+            for num_var in range(3, len(all_shapes)+1):
+                
                 shapes = random.sample(all_shapes, num_var)
-                data.append([structure, actions, changes, shapes, num_var])
-            else:
-                for num_var in range(3, len(all_shapes)+1):
-                    
-                    shapes = random.sample(all_shapes, num_var)
-                    data.append([structure, actions, changes, shapes, num_var])
+                data.append([structure, True, shapes, num_var])
     
     df = pd.DataFrame(data=data, columns=columns)
     return df
@@ -46,35 +46,21 @@ def generate_dataset(structures, all_actions, all_changes, all_shapes):
 
 def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name):
     dataset = dataset_df.values.tolist()
-    model_results = []
+
     for row in tqdm(dataset, desc="Progress by Group"):
-        causal_structure, actions, changes, shapes, num_var = tuple(row)
-        actions = literal_eval(actions) if type(actions) is str else actions
-        changes = literal_eval(changes) if type(changes) is str else actions
-        shapes = literal_eval(shapes) if type(shapes) is str else actions
-        model_result_row = [causal_structure, len(actions), len(changes), num_var]
+        causal_structure, causal_flag, shapes, num_var = tuple(row)
+        shapes = literal_eval(shapes) if type(shapes) is str else shapes
+        result_table = {}
         for _ in range(num_rep):
-            temp_results = []
-            ground_truths = []
-            error_modes = []
+            
             s_world = ShapeWorld(causal_structure, prompt_template_name, model, actions, changes, shapes, num_var)
-
-            for (var_1, var_2) in itertools.combinations(s_world.shape_changes, 2):
-                for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
-                    ground_truth = s_world.check_causal_path(s_world.shape_changes.index(cause), s_world.shape_changes.index(effect))
-                    error, result = s_world.interaction_loop(cause, effect, model_path)
-                    error_modes.append(error)
-                    ground_truths.append(ground_truth)
-                    temp_results.append(result)
-            model_result_row.append(ground_truths)
-            model_result_row.append(temp_results)
-            model_result_row.append(error_modes)
-
-        model_results.append(model_result_row)
+            curr_result = s_world.run_experiment(model_path)
+            if result_table == {}:
+                result_table = curr_result
+            else:
+                result_table = {key: result_table[key] + curr_result[key] for key in result_table}
     
-    result_df = pd.DataFrame(data=model_results, columns=['structure', 'num_actions', 
-                                                          'num_changes', 'num_shapes',
-                                                          'ground_truths', 'results', 'error_modes'])
+    result_df = pd.DataFrame(result_table)
     
     return result_df
 
@@ -94,7 +80,7 @@ if __name__ == '__main__':
     else:
         actions = ['touch']
         changes = ['moving']
-        shapes = ["circle", "square", 'triangle']
+        shapes = ["circle", "square", "triangle", "rectangle", "hexagon"]
         structures = ['direct', 'mediation', 'confounder', 'random']
 
         data_df = generate_dataset(structures, actions, changes, shapes)
