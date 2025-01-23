@@ -231,10 +231,10 @@ class ShapeWorld(CausalWorld):
     
     def interaction_step(self, last_state, last_response):
         try:
-            if last_state in ['initial', 'interaction']:
+            if last_state in ['initial', 'interaction'] \
+                or (last_state == 'choice' and 'next' not in last_response):
                 curr_state = 'choice'
                 self.apply_intervention(last_response['shape'], last_response['action'])
-                
             elif last_state == 'choice':
                 if last_response['next'] == "continue interaction":
                     curr_state = 'interaction'
