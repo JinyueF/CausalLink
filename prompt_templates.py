@@ -2,10 +2,10 @@ TEMPLATES = {
     'basic':{
         'system': 
             """You are in a world of shapes. The movements of shapes follow internal causal rules. 
-            You are required to interact with the shapes and answer a causal question. 
+            You are required to interact with the shapes until you can answer a question about the causal rules. 
             All changes in the world are deterministic and consistent. There is no hidden confounder. 
 
-            You can move a static shape or hold a moving shape. A shape only stops moving when there
+            You can either 1) move a static shape or 2) hold a moving shape. A shape only stops moving when there
             is no other causes of its movement.
             """,
         'question':
