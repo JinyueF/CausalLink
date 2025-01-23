@@ -53,7 +53,7 @@ def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name
         result_table = {}
         for _ in range(num_rep):
             
-            s_world = ShapeWorld(causal_structure, prompt_template_name, model, actions, changes, shapes, num_var)
+            s_world = ShapeWorld(causal_structure, causal_flag, prompt_template_name, model, shapes=shapes, num_var=num_var)
             curr_result = s_world.run_experiment(model_path)
             if result_table == {}:
                 result_table = curr_result
@@ -71,19 +71,17 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str, default='hf-qwen')
     parser.add_argument('--model_path', type=str, default='/model-weights/Qwen2.5-14B-Instruct')
     parser.add_argument('--num_rep', type=int, default=1)
-    parser.add_argument('--prompt_template', type=str, default='basic_limit_steps')
+    parser.add_argument('--prompt_template', type=str, default='basic')
 
     args = parser.parse_args()
 
     if os.path.exists(args.data_path):
         data_df = pd.read_csv(args.data_path, index_col=0)
     else:
-        actions = ['touch']
-        changes = ['moving']
-        shapes = ["circle", "square", "triangle", "rectangle", "hexagon"]
+        shapes = ["circle", "square", "triangle"]
         structures = ['direct', 'mediation', 'confounder', 'random']
 
-        data_df = generate_dataset(structures, actions, changes, shapes)
+        data_df = generate_dataset(structures, shapes)
         data_df.to_csv(args.data_path, index=True)
 
     result_df = run_experiments(data_df, args.num_rep, args.model, args.model_path, args.prompt_template)
