@@ -141,7 +141,7 @@ class ShapeWorld(CausalWorld):
             parents = list(self.causal_graph.predecessors(node))
             return any(parent in self.active_shapes for parent in parents)
             
-        if not has_active_parent(node):
+        if not has_active_parent(node) and node in self.active_shapes:
             self.active_shapes.remove(node)
         
             for child in self.causal_graph.successors(node):
@@ -230,20 +230,23 @@ class ShapeWorld(CausalWorld):
         return parsed
     
     def interaction_step(self, last_state, last_response):
-        if last_state in ['initial', 'interaction']:
-            curr_state = 'choice'
-            self.apply_intervention(last_response['shape'], last_response['action'])
-            
-        elif last_state == 'choice':
-            if last_response['next'] == "continue interaction":
-                curr_state = 'interaction'
-            elif last_response['next'] == 'answer the question':
-                curr_state = 'answer'
-            else:
+        try:
+            if last_state in ['initial', 'interaction']:
                 curr_state = 'choice'
-        
-        prompt = self.generate_prompt(curr_state)
-        return curr_state, prompt
+                self.apply_intervention(last_response['shape'], last_response['action'])
+                
+            elif last_state == 'choice':
+                if last_response['next'] == "continue interaction":
+                    curr_state = 'interaction'
+                elif last_response['next'] == 'answer the question':
+                    curr_state = 'answer'
+                else:
+                    curr_state = 'choice'
+            
+            prompt = self.generate_prompt(curr_state)
+            return curr_state, prompt
+        except KeyError:
+            return None, None
             
 
     def interaction_loop(self, initial_active_shapes, cause, effect, model_path=None):
@@ -269,9 +272,14 @@ class ShapeWorld(CausalWorld):
 
         while response and curr_state != 'answer' and step < max_step:
             curr_state, prompt = self.interaction_step(curr_state, response)
+            print(prompt)
+            if curr_state is None:
+                response = None
+                break
             if curr_state == "interaction":
                 step += 1
             response = self.collect_response(prompt, pipe)
+            print(response)
 
         if not response:
             self.error_mode = "invalid format"
@@ -294,7 +302,6 @@ class ShapeWorld(CausalWorld):
         
         setups = []
         for i in range(len(node_and_descendants)):
-            print(list(itertools.combinations(node_and_descendants, i)))
             setups.extend(list(itertools.combinations(node_and_descendants, i)))
         
         for i in range(len(setups)):
@@ -310,6 +317,7 @@ class ShapeWorld(CausalWorld):
         for setup in setups:
             for (var_1, var_2) in itertools.combinations(self.shapes, 2):
                 for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
+                    self.error_mode = None
                     error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
                     result_table['setup'].append(setup)
                     result_table['cause'].append(cause)
