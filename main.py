@@ -8,6 +8,7 @@ from tqdm import tqdm
 from ast import literal_eval
 
 from dancing_shape import ShapeWorld
+from utils import save_checkpoint, load_checkpoint
 
 def generate_dataset(structures, all_shapes):
     """
@@ -44,13 +45,26 @@ def generate_dataset(structures, all_shapes):
     return df
 
 
-def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name):
+def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name, checkpoint_path):
     dataset = dataset_df.values.tolist()
+    result_table = {}
+
+    checkpoint = load_checkpoint(checkpoint_path)
+    if checkpoint:
+        result_table = checkpoint['result_table']
+        processed_setups = checkpoint['processed_setups']
+    else:
+        result_table = {}
+        processed_setups = set()
 
     for row in tqdm(dataset, desc="Progress by Group"):
+        row_key = tuple(row)
+        if row_key in processed_setups:
+            continue
+
         causal_structure, causal_flag, shapes, num_var = tuple(row)
         shapes = literal_eval(shapes) if type(shapes) is str else shapes
-        result_table = {}
+        
         for _ in range(num_rep):
             
             s_world = ShapeWorld(causal_structure, causal_flag, prompt_template_name, model, shapes=shapes, num_var=num_var)
@@ -59,6 +73,12 @@ def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name
                 result_table = curr_result
             else:
                 result_table = {key: result_table[key] + curr_result[key] for key in result_table}
+        
+        processed_setups.add(row_key)
+        save_checkpoint(checkpoint_path, {
+                        'result_table': result_table,
+                        'processed_setups': processed_setups
+                    })
     
     result_df = pd.DataFrame(result_table)
     
@@ -66,14 +86,16 @@ def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_path', type=str, default='./data/test_df.csv')
+    parser.add_argument('--data_path', type=str, default='./data/test.csv')
     parser.add_argument('--result_path', type=str, default='./results/test_result.csv')
-    parser.add_argument('--model', type=str, default='hf-qwen')
-    parser.add_argument('--model_path', type=str, default='/model-weights/Qwen2.5-14B-Instruct')
+    parser.add_argument('--model', type=str, default='hf-llama-32-3')
+    parser.add_argument('--model_path', type=str, default='/model-weights/Llama-3.2-3B-Instruct')
     parser.add_argument('--num_rep', type=int, default=1)
     parser.add_argument('--prompt_template', type=str, default='basic')
+    parser.add_argument('--checkpoint_path', type=str, default='experiment_checkpoint.pkl')
 
     args = parser.parse_args()
+    checkpoint_path = "{}_experiment_checkpoint.pkl".format(args.model)
 
     if os.path.exists(args.data_path):
         data_df = pd.read_csv(args.data_path, index_col=0)
@@ -84,5 +106,5 @@ if __name__ == '__main__':
         data_df = generate_dataset(structures, shapes)
         data_df.to_csv(args.data_path, index=True)
 
-    result_df = run_experiments(data_df, args.num_rep, args.model, args.model_path, args.prompt_template)
+    result_df = run_experiments(data_df, args.num_rep, args.model, args.model_path, args.prompt_template, args.checkpoint_path)
     result_df.to_csv(args.result_path, index=True)

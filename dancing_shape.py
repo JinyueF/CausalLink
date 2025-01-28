@@ -9,6 +9,7 @@ import json
 import re
 
 from prompt_templates import TEMPLATES
+from utils import save_checkpoint, load_checkpoint
 
 class CausalWorld:
 
@@ -97,6 +98,7 @@ class ShapeWorld(CausalWorld):
         self.active_shapes = []
         self.result = None
         self.error_mode = None
+        self.checkpoint_path = "{}_shape_world.pkl".format(model)
 
 
     def generate_variables(self, actions, changes, shapes):
@@ -173,37 +175,36 @@ class ShapeWorld(CausalWorld):
 
 
     def generate_prompt(self, state):
-
-        question_prompt = self.prompt_templates['question'].format(self.question)
         
         if state == "initial":
             first_section_prompt = self.prompt_templates['system'] # system prompt
-            json_prompt = self.prompt_templates['initial'].format(self.format_current_changes(), str(self.shapes), str(self.actions))
+            json_prompt = self.prompt_templates['initial'].format(self.format_current_changes(), self.question, str(self.shapes), str(self.actions))
 
         elif state == "choice":
-            first_section_prompt = self.format_current_changes()
-            json_prompt = self.prompt_templates['choice']
+            first_section_prompt = "Following your last action, the current states of shapes are: " + self.format_current_changes()
+            json_prompt = self.prompt_templates['choice'].format(self.question)
         
         elif state == 'interaction':
             first_section_prompt = ''
             json_prompt = self.prompt_templates['interaction'].format(str(self.shapes), str(self.actions))
         
         elif state == 'answer':
-            first_section_prompt = self.format_current_changes()
-            json_prompt = self.prompt_templates['answer']
+            first_section_prompt = ''
+            json_prompt = self.prompt_templates['answer'].format(self.question)
         
         if self.model == "human":
-            prompt = '\n'.join([first_section_prompt, question_prompt, json_prompt])
+            prompt = '\n'.join([first_section_prompt, json_prompt])
         elif self.model.startswith('hf'):
             if state == 'initial':
-                if 'mistral' not in self.model:
+                if 'deepseek' in self.model or 'mistral' in self.model:
+                    prompt = [{"role": "user", "content": '\n'.join([first_section_prompt, json_prompt])}]
+                else:
                     prompt = [
                         {"role": "system", "content": first_section_prompt}, 
-                        {"role": "user", "content": '\n'.join([question_prompt, json_prompt])}]
-                else:
-                    prompt = [{"role": "user", "content": '\n'.join([first_section_prompt, question_prompt, json_prompt])}]
+                        {"role": "user", "content": json_prompt}]
+                
             else:
-                prompt = {"role": "user", "content": '\n'.join([first_section_prompt, question_prompt, json_prompt])}
+                prompt = {"role": "user", "content": '\n'.join([first_section_prompt, json_prompt])}
   
         return prompt
     
@@ -223,8 +224,9 @@ class ShapeWorld(CausalWorld):
                 self.chat = prompt
             else:
                 self.chat.append(prompt)
-            raw_response = pipe(self.chat, max_new_tokens=512)
+            raw_response = pipe(self.chat, max_new_tokens=2048)
             response = raw_response[0]['generated_text'][-1]['content']
+            print(response)
             parsed = self.parse_intervention(response)
 
         return parsed
@@ -260,18 +262,20 @@ class ShapeWorld(CausalWorld):
         self.answer = self.check_causal_path(self.shapes.index(cause), self.shapes.index(effect))
 
         if model.startswith('hf'):
-            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device=device)
+            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device=device, temperature=0.6)
         elif model == 'human':
             pipe = None
         
         curr_state = "initial"
         initial_prompt = self.generate_prompt(curr_state)
+        print(initial_prompt)
         response = self.collect_response(initial_prompt, pipe)
         step = 0
         max_step = len(self.shapes) * len(self.actions)
 
         while response and curr_state != 'answer' and step < max_step:
             curr_state, prompt = self.interaction_step(curr_state, response)
+
             print(prompt)
             if curr_state is None:
                 response = None
@@ -279,7 +283,6 @@ class ShapeWorld(CausalWorld):
             if curr_state == "interaction":
                 step += 1
             response = self.collect_response(prompt, pipe)
-            print(response)
 
         if not response:
             self.error_mode = "invalid format"
@@ -288,7 +291,7 @@ class ShapeWorld(CausalWorld):
             self.error_mode = "too many attempts"
             self.result = None
         else:
-            self.result = self.check_result(self.collect_response(prompt, pipe))
+            self.result = self.check_result(response)
             if self.result is None:
                 self.error_mode = "invalid answer"
         
@@ -311,14 +314,27 @@ class ShapeWorld(CausalWorld):
         
 
     def run_experiment(self, model_path=None):
-        setups = self.get_initial_setups()
-        result_table = {'setup':[], 'cause':[], 'effect':[], 'ground_truth':[],
-                        'error':[], 'result':[], 'n_step':[]}
+
+        checkpoint = load_checkpoint(self.checkpoint_path)
+        if checkpoint:
+            result_table = checkpoint['result_table']
+            processed_setups = checkpoint['processed_setups']
+            setups = checkpoint['setups']
+        else:
+            result_table = {'structure': [], 'setup':[], 'cause':[], 'effect':[], 'ground_truth':[],
+                            'error':[], 'result':[], 'n_step':[]}
+            processed_setups = set()
+            setups = self.get_initial_setups()
+
         for setup in setups:
             for (var_1, var_2) in itertools.combinations(self.shapes, 2):
                 for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
+                    if (frozenset(setup), cause, effect) in processed_setups:
+                        continue
+
                     self.error_mode = None
                     error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
+                    result_table['structure'].append(self.causal_structure)
                     result_table['setup'].append(setup)
                     result_table['cause'].append(cause)
                     result_table['effect'].append(effect)
@@ -326,4 +342,14 @@ class ShapeWorld(CausalWorld):
                     result_table['error'].append(error)
                     result_table['result'].append(result)
                     result_table['n_step'].append(step)
+
+                    processed_setups.add((frozenset(setup), cause, effect))
+                
+                    # Save checkpoint
+                    save_checkpoint(self.checkpoint_path, {
+                        'result_table': result_table,
+                        'processed_setups': processed_setups,
+                        'setups': setups
+                    })
+
         return result_table
