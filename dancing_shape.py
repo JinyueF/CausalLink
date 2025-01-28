@@ -98,7 +98,7 @@ class ShapeWorld(CausalWorld):
         self.active_shapes = []
         self.result = None
         self.error_mode = None
-        self.checkpoint_path = "{}_shape_world.pkl".format(model)
+        self.checkpoint_path = "./checkpoints/{}_shape_world.pkl".format(model)
 
 
     def generate_variables(self, actions, changes, shapes):

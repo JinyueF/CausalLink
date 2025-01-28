@@ -92,10 +92,9 @@ if __name__ == '__main__':
     parser.add_argument('--model_path', type=str, default='/model-weights/Llama-3.2-3B-Instruct')
     parser.add_argument('--num_rep', type=int, default=1)
     parser.add_argument('--prompt_template', type=str, default='basic')
-    parser.add_argument('--checkpoint_path', type=str, default='experiment_checkpoint.pkl')
 
     args = parser.parse_args()
-    checkpoint_path = "{}_experiment_checkpoint.pkl".format(args.model)
+    checkpoint_path = "./checkpoints/{}_experiment_checkpoint.pkl".format(args.model)
 
     if os.path.exists(args.data_path):
         data_df = pd.read_csv(args.data_path, index_col=0)
@@ -106,5 +105,5 @@ if __name__ == '__main__':
         data_df = generate_dataset(structures, shapes)
         data_df.to_csv(args.data_path, index=True)
 
-    result_df = run_experiments(data_df, args.num_rep, args.model, args.model_path, args.prompt_template, args.checkpoint_path)
+    result_df = run_experiments(data_df, args.num_rep, args.model, args.model_path, args.prompt_template, checkpoint_path)
     result_df.to_csv(args.result_path, index=True)
