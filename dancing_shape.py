@@ -3,13 +3,12 @@ import networkx as nx
 import torch
 from transformers import pipeline
 
-
 import random
 import json
 import re
 
 from prompt_templates import TEMPLATES
-from utils import save_checkpoint, load_checkpoint
+from utils import save_checkpoint, load_checkpoint, purge_checkpoint
 
 class CausalWorld:
 
@@ -225,8 +224,8 @@ class ShapeWorld(CausalWorld):
             else:
                 self.chat.append(prompt)
             raw_response = pipe(self.chat, max_new_tokens=2048)
+            self.chat = raw_response[0]['generated_text']
             response = raw_response[0]['generated_text'][-1]['content']
-            print(response)
             parsed = self.parse_intervention(response)
 
         return parsed
@@ -303,6 +302,8 @@ class ShapeWorld(CausalWorld):
         node_and_descendants = [
             [n] + list(nx.descendants(self.causal_graph, n)) for n in nodes]
         
+        print(node_and_descendants)
+        
         setups = []
         for i in range(len(node_and_descendants)):
             setups.extend(list(itertools.combinations(node_and_descendants, i)))
@@ -316,6 +317,7 @@ class ShapeWorld(CausalWorld):
     def run_experiment(self, model_path=None):
 
         checkpoint = load_checkpoint(self.checkpoint_path)
+        error_log_path = "./failure_cases/{}_{}.jsonl".format(self.model, self.causal_structure)
         if checkpoint:
             result_table = checkpoint['result_table']
             processed_setups = checkpoint['processed_setups']
@@ -343,6 +345,17 @@ class ShapeWorld(CausalWorld):
                     result_table['result'].append(result)
                     result_table['n_step'].append(step)
 
+                    if not result:
+                        log_entry = {
+                            "error": self.error_mode,
+                            "cause": cause,
+                            "effect": effect,
+                            "setup": list(setup),
+                            "conversational_history": self.chat if hasattr(self, 'chat') else []
+                        }
+                        with open(error_log_path, "a") as log:
+                            log.write(json.dumps(log_entry) + "\n")
+
                     processed_setups.add((frozenset(setup), cause, effect))
                 
                     # Save checkpoint
@@ -351,5 +364,7 @@ class ShapeWorld(CausalWorld):
                         'processed_setups': processed_setups,
                         'setups': setups
                     })
-
+        
+        purge_checkpoint(self.checkpoint_path)
+        
         return result_table

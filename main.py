@@ -59,6 +59,7 @@ def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name
 
     for row in tqdm(dataset, desc="Progress by Group"):
         row_key = tuple(row)
+        print(row_key)
         if row_key in processed_setups:
             continue
 

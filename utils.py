@@ -28,3 +28,8 @@ def load_checkpoint(filename):
         with open(filename, 'rb') as f:
             return pickle.load(f)
     return None
+
+def purge_checkpoint(filename):
+    if os.path.exists(filename):
+        os.remove(filename)
+    return None
