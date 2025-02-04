@@ -3,6 +3,7 @@ import networkx as nx
 import torch
 import transformers
 from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+from openai import OpenAI
 
 import random
 import json
@@ -194,7 +195,7 @@ class ShapeWorld(CausalWorld):
         
         if self.model == "human":
             prompt = '\n'.join([first_section_prompt, json_prompt])
-        elif self.model.startswith('hf'):
+        elif self.model.startswith('hf') or self.model.startwith('openai'):
             if state == 'initial':
                 if 'deepseek' in self.model or 'mistral' in self.model:
                     prompt = [{"role": "user", "content": '\n'.join([first_section_prompt, json_prompt])}]
@@ -227,6 +228,19 @@ class ShapeWorld(CausalWorld):
             raw_response = pipe(self.chat, max_new_tokens=2048)
             self.chat = raw_response[0]['generated_text']
             response = raw_response[0]['generated_text'][-1]['content']
+            parsed = self.parse_intervention(response)
+        elif self.model.startwith('openai'):
+            if type(prompt) is list:
+                self.chat = prompt
+            else:
+                self.chat.append(prompt)
+            oa_model = self.model.split('_')[1]
+            raw_response = pipe.chat.completions.create(
+                model=oa_model,
+                messages=self.chat
+            )
+            response = raw_response.choices[0].message.content
+            self.chat.append({"role":'assistant', "content":response})
             parsed = self.parse_intervention(response)
 
         return parsed
@@ -274,7 +288,9 @@ class ShapeWorld(CausalWorld):
             pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device_map="auto", temperature=0.6)
         elif model == 'human':
             pipe = None
-        
+        elif model.startswith('openai'):
+            pipe = OpenAI()
+
         curr_state = "initial"
         initial_prompt = self.generate_prompt(curr_state)
         print(initial_prompt)
