@@ -1,7 +1,8 @@
 import itertools
 import networkx as nx
 import torch
-from transformers import pipeline
+import transformers
+from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
 
 import random
 import json
@@ -261,7 +262,16 @@ class ShapeWorld(CausalWorld):
         self.answer = self.check_causal_path(self.shapes.index(cause), self.shapes.index(effect))
 
         if model.startswith('hf'):
-            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device=device, temperature=0.6)
+            # if 'large' in model:
+            #     tokenizer = AutoTokenizer.from_pretrained(model_path)
+            #     bnb_config = transformers.BitsAndBytesConfig(load_in_8bit=True)
+            #     model = AutoModelForCausalLM.from_pretrained(
+            #         model_path,
+            #         quantization_config=bnb_config,
+            #         device_map='auto'
+            #     )
+            #     pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
+            pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device_map="auto", temperature=0.6)
         elif model == 'human':
             pipe = None
         

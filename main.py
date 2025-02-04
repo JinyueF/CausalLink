@@ -8,7 +8,7 @@ from tqdm import tqdm
 from ast import literal_eval
 
 from dancing_shape import ShapeWorld
-from utils import save_checkpoint, load_checkpoint
+from utils import save_checkpoint, load_checkpoint, purge_checkpoint
 
 def generate_dataset(structures, all_shapes):
     """
@@ -82,6 +82,7 @@ def run_experiments(dataset_df, num_rep, model, model_path, prompt_template_name
                     })
     
     result_df = pd.DataFrame(result_table)
+    purge_checkpoint(checkpoint_path)
     
     return result_df
 
