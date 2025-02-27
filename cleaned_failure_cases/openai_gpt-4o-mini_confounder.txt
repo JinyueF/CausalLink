@@ -1,0 +1,396 @@
+Question: Does triangle moving cause circle to move?
+State update: circle is static, square is static, triangle is static
+[hold] triangle
+State update: circle is static, square is static, triangle is static
+[move] circle
+State update: circle is moving, square is static, triangle is moving
+Final Answer: yes
+
+Question: Does square moving cause circle to move?
+State update: circle is static, square is static, triangle is moving
+[hold] triangle
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: circle is static, square is static, triangle is moving
+[hold] triangle
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: circle is static, square is static, triangle is moving
+[hold] square
+State update: circle is static, square is static, triangle is moving
+[hold] triangle
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause circle to move?
+State update: circle is moving, square is static, triangle is moving
+[move] square
+State update: circle is moving, square is moving, triangle is moving
+[hold] triangle
+State update: circle is moving, square is moving, triangle is moving
+[hold] square
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: circle is moving, square is static, triangle is moving
+[hold] circle
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: circle is moving, square is static, triangle is moving
+[move] square
+State update: circle is moving, square is moving, triangle is moving
+[hold] triangle
+State update: circle is moving, square is moving, triangle is moving
+[hold] circle
+State update: circle is moving, square is moving, triangle is moving
+[hold] square
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause circle to move?
+State update: circle is moving, square is moving, triangle is moving
+[hold] square
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: circle is moving, square is moving, triangle is moving
+[hold] circle
+State update: circle is moving, square is moving, triangle is moving
+[hold] square
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: circle is moving, square is moving, triangle is moving
+[hold] square
+State update: circle is static, square is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is static, circle is static, square is moving
+[hold] square
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is static, circle is static, square is moving
+[hold] circle
+State update: triangle is static, circle is static, square is moving
+[hold] square
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is moving, circle is moving, square is moving
+[hold] circle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is moving, circle is moving, square is moving
+[hold] circle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is moving, circle is static, square is moving
+[hold] circle
+State update: triangle is moving, circle is static, square is moving
+[hold] square
+State update: triangle is moving, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is moving, circle is static, square is moving
+[hold] square
+State update: triangle is moving, circle is static, square is static
+[hold] triangle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is static, circle is static, square is static
+[hold] circle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is static, circle is static, square is static
+[hold] circle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is moving, circle is static, square is static
+[hold] circle
+State update: triangle is moving, circle is static, square is static
+[hold] triangle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is moving, circle is static, square is static
+[hold] triangle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is static, circle is static, triangle is static
+[hold] circle
+State update: square is static, circle is static, triangle is static
+[hold] triangle
+State update: square is static, circle is static, triangle is static
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: square is static, circle is static, triangle is moving
+[hold] triangle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: square is static, circle is static, triangle is moving
+[move] square
+State update: square is moving, circle is static, triangle is moving
+[hold] triangle
+State update: square is moving, circle is static, triangle is moving
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is static, circle is static, triangle is moving
+[hold] circle
+State update: square is static, circle is static, triangle is moving
+[hold] triangle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: square is moving, circle is static, triangle is moving
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: square is moving, circle is static, triangle is moving
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is moving, circle is static, triangle is moving
+[hold] triangle
+State update: square is moving, circle is static, triangle is moving
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: square is moving, circle is moving, triangle is moving
+[hold] circle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: square is moving, circle is moving, triangle is moving
+[hold] square
+State update: square is moving, circle is moving, triangle is moving
+[hold] circle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is moving, circle is moving, triangle is moving
+[hold] circle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: square is static, circle is static, triangle is moving
+[hold] triangle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is static, circle is static, triangle is moving
+[hold] triangle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: square is moving, circle is moving, triangle is moving
+[hold] circle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is moving, circle is moving, triangle is moving
+[hold] circle
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: square is moving, circle is static, triangle is moving
+[hold] square
+State update: square is static, circle is static, triangle is moving
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is moving, circle is static, triangle is moving
+[hold] triangle
+State update: square is moving, circle is static, triangle is static
+Final Answer: no
+
+Question: Does square moving cause triangle to move?
+State update: square is static, circle is static, triangle is static
+[move] square
+State update: square is moving, circle is static, triangle is static
+[hold] triangle
+State update: square is moving, circle is static, triangle is static
+[move] circle
+State update: square is moving, circle is moving, triangle is moving
+Final Answer: yes
+
+Question: Does circle moving cause square to move?
+State update: square is moving, circle is static, triangle is static
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: square is moving, circle is static, triangle is static
+[hold] circle
+State update: square is moving, circle is static, triangle is static
+[hold] square
+State update: square is static, circle is static, triangle is static
+Final Answer: no
+
+Question: Does triangle moving cause circle to move?
+State update: circle is static, triangle is static, square is moving
+[hold] triangle
+State update: circle is static, triangle is static, square is moving
+[hold] square
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: circle is static, triangle is static, square is moving
+[hold] square
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does triangle moving cause square to move?
+State update: circle is static, triangle is static, square is moving
+[hold] square
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does triangle moving cause circle to move?
+State update: circle is moving, triangle is static, square is moving
+[hold] circle
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: circle is moving, triangle is static, square is moving
+[hold] circle
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does triangle moving cause square to move?
+State update: circle is moving, triangle is static, square is moving
+[hold] square
+State update: circle is moving, triangle is static, square is moving
+[hold] circle
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does triangle moving cause circle to move?
+State update: circle is moving, triangle is moving, square is moving
+[hold] triangle
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: circle is moving, triangle is moving, square is moving
+[hold] circle
+State update: circle is moving, triangle is moving, square is moving
+[hold] triangle
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does triangle moving cause square to move?
+State update: circle is moving, triangle is moving, square is moving
+[hold] triangle
+State update: circle is static, triangle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is static, circle is static, square is moving
+[hold] circle
+State update: triangle is static, circle is static, square is moving
+[hold] square
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is static, circle is static, square is moving
+[hold] square
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is moving, circle is moving, square is moving
+[hold] circle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is moving, circle is moving, square is moving
+[hold] circle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is moving, circle is static, square is moving
+[hold] triangle
+State update: triangle is static, circle is static, square is moving
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is moving, circle is static, square is moving
+[hold] triangle
+State update: triangle is static, circle is static, square is moving
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is static, circle is static, square is static
+[hold] circle
+State update: triangle is static, circle is static, square is static
+[move] square
+State update: triangle is static, circle is static, square is moving
+Final Answer: no
+
+Question: Does circle moving cause triangle to move?
+State update: triangle is moving, circle is static, square is static
+[hold] triangle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+
+Question: Does circle moving cause square to move?
+State update: triangle is moving, circle is static, square is static
+[hold] triangle
+State update: triangle is static, circle is static, square is static
+Final Answer: no
+

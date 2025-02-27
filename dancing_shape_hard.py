@@ -259,7 +259,7 @@ class ShapeWorld(CausalWorld):
                 response = input("Invalid input, please try again").lower()
                 parsed = self.parse_intervention(response)
                 step += 1
-        elif self.model.startswith('hf'):
+        elif self.model.startswith('hf') and 'large' not in self.model:
             if type(prompt) is list:
                 self.chat = prompt
             else:
@@ -316,7 +316,6 @@ class ShapeWorld(CausalWorld):
             response = raw_response.choices[0].message.content
             self.chat.append({"role":'assistant', "content":response})
             parsed = self.parse_intervention(response)
-                
 
         return parsed
     
@@ -351,7 +350,10 @@ class ShapeWorld(CausalWorld):
         self.answer = self.check_causal_path(self.shapes.index(cause), self.shapes.index(effect))
 
         if model.startswith('hf'):
-            pipe = pipeline("text-generation", model_path, torch_dtype=torch.float16, device_map="auto", temperature=0.6)
+            if 'large' in model:
+                pipe = OpenAI(api_key="EMPTY", base_url=model_path)
+            else:
+                pipe = pipeline("text-generation", model_path, torch_dtype=torch.bfloat16, device_map="auto", temperature=0.6)
         elif model == 'human':
             pipe = None
         elif model.startswith('openai'):
@@ -359,10 +361,11 @@ class ShapeWorld(CausalWorld):
         elif model.startswith('deepseek'):
             pipe = OpenAI(api_key=os.environ['DEEPSEEK_API_KEY'], base_url="https://api.deepseek.com/v1")
         elif model.startswith('gemini'):
-            client = genai.Client(api_key=os.environ['GOOGLE_API_KEY'], http_options={'api_version':'v1alpha'})
+            client = genai.Client(api_key=os.environ['GOOGLE_API_KEY'])
             pipe = client.chats.create(model=self.model)
         else:
             pipe = OpenAI(api_key='EMPTY', base_url=model_path)
+
 
         curr_state = "initial"
         initial_prompt = self.generate_prompt(curr_state)
@@ -427,42 +430,42 @@ class ShapeWorld(CausalWorld):
             setups = self.get_initial_setups()
 
         for setup in setups:
-            for (var_1, var_2) in itertools.combinations(self.shapes, 2):
-                for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
-                    if (frozenset(setup), cause, effect) in processed_setups:
-                        continue
-                    self.error_mode = None
-                    
-                    error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
-                    result_table['structure'].append(self.causal_structure)
-                    result_table['setup'].append(setup)
-                    result_table['cause'].append(cause)
-                    result_table['effect'].append(effect)
-                    result_table['ground_truth'].append(self.answer)
-                    result_table['error'].append(error)
-                    result_table['result'].append(result)
-                    result_table['n_step'].append(step)
-
-                    if not result:
-                        log_entry = {
-                            "error": self.error_mode,
-                            "cause": cause,
-                            "effect": effect,
-                            "setup": list(setup),
-                            "conversational_history": self.chat if hasattr(self, 'chat') else []
-                        }
-                        with open(error_log_path, "a") as log:
-                            log.write(json.dumps(log_entry) + "\n")
-
-                    processed_setups.add((frozenset(setup), cause, effect))
+            sample = random.sample(list(itertools.combinations(self.shapes, 2)), 6)
+            for (cause, effect) in sample:
+                if (frozenset(setup), cause, effect) in processed_setups:
+                    continue
+                self.error_mode = None
                 
-                    # Save checkpoint
-                    save_checkpoint(self.checkpoint_path, {
-                        'result_table': result_table,
-                        'processed_setups': processed_setups,
-                        'setups': setups
-                    })
-        
+                error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
+                result_table['structure'].append(self.causal_structure)
+                result_table['setup'].append(setup)
+                result_table['cause'].append(cause)
+                result_table['effect'].append(effect)
+                result_table['ground_truth'].append(self.answer)
+                result_table['error'].append(error)
+                result_table['result'].append(result)
+                result_table['n_step'].append(step)
+
+                if not result:
+                    log_entry = {
+                        "error": self.error_mode,
+                        "cause": cause,
+                        "effect": effect,
+                        "setup": list(setup),
+                        "conversational_history": self.chat if hasattr(self, 'chat') else []
+                    }
+                    with open(error_log_path, "a") as log:
+                        log.write(json.dumps(log_entry) + "\n")
+
+                processed_setups.add((frozenset(setup), cause, effect))
+            
+                # Save checkpoint
+                save_checkpoint(self.checkpoint_path, {
+                    'result_table': result_table,
+                    'processed_setups': processed_setups,
+                    'setups': setups
+                })
+    
         purge_checkpoint(self.checkpoint_path)
         
         return result_table

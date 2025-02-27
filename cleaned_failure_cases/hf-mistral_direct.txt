@@ -1,0 +1,208 @@
+Question: Does circle moving cause pentagon to move?
+State update: circle is moving, pentagon is moving
+[hold] circle
+State update: circle is static, pentagon is static
+Final Answer: no
+
+Question: Does rectangle moving cause ellipse to move?
+State update: rectangle is static, ellipse is moving
+[move] rectangle
+State update: rectangle is moving, ellipse is moving
+[stop] rectangle
+State update: rectangle is moving, ellipse is moving
+Final Answer: no
+
+Question: Does circle moving cause pentagon to move?
+State update: circle is static, pentagon is moving
+[move] circle
+State update: circle is moving, pentagon is moving
+[stop] circle
+State update: circle is moving, pentagon is moving
+Final Answer: no
+
+Question: Does octagon moving cause triangle to move?
+State update: octagon is moving, triangle is moving
+[hold] octagon
+State update: octagon is static, triangle is static
+Final Answer: no
+
+Question: Does hexagon moving cause circle to move?
+State update: hexagon is moving, circle is moving
+[hold] hexagon
+State update: hexagon is static, circle is static
+Final Answer: I cannot definitively say that hexagon moving causes circle to move.
+
+Question: Does octagon moving cause triangle to move?
+State update: octagon is static, triangle is moving
+[move] octagon
+State update: octagon is moving, triangle is moving
+[hold] triangle
+State update: octagon is moving, triangle is moving
+Final Answer: no
+
+Question: Does hexagon moving cause circle to move?
+State update: hexagon is static, circle is moving
+[move] hexagon
+State update: hexagon is moving, circle is moving
+[hold] hexagon
+State update: hexagon is static, circle is static
+Final Answer: no
+
+Question: Does triangle moving cause octagon to move?
+State update: octagon is static, triangle is moving
+[hold] triangle
+State update: octagon is static, triangle is static
+Final Answer: cannot be determined
+
+Question: Does ellipse moving cause octagon to move?
+State update: ellipse is moving, octagon is moving
+[hold] ellipse
+State update: ellipse is static, octagon is static
+Final Answer: no
+
+Question: Does circle moving cause rectangle to move?
+State update: circle is moving, rectangle is moving
+[hold] circle
+State update: circle is static, rectangle is static
+Final Answer: no
+
+Question: Does hexagon moving cause ellipse to move?
+State update: hexagon is static, ellipse is static
+[move] hexagon
+State update: hexagon is moving, ellipse is moving
+Final Answer: cannot be determined with certainty based on the current observations
+
+Question: Does ellipse moving cause octagon to move?
+State update: ellipse is static, octagon is moving
+[move] ellipse
+State update: ellipse is moving, octagon is moving
+[stop] ellipse
+State update: ellipse is moving, octagon is moving
+[hold] octagon
+State update: ellipse is moving, octagon is moving
+[stop] ellipse
+State update: ellipse is moving, octagon is moving
+Final Answer: no
+
+Question: Does octagon moving cause circle to move?
+State update: octagon is moving, circle is moving
+[hold] octagon
+State update: octagon is static, circle is static
+Final Answer: Possibly
+
+Question: Does circle moving cause rectangle to move?
+State update: circle is static, rectangle is moving
+[move] circle
+State update: circle is moving, rectangle is moving
+[hold] rectangle
+State update: circle is moving, rectangle is moving
+Final Answer: no
+
+Question: Does hexagon moving cause ellipse to move?
+State update: hexagon is moving, ellipse is moving
+[hold] ellipse
+State update: hexagon is moving, ellipse is moving
+[move] hexagon
+State update: hexagon is moving, ellipse is moving
+Final Answer: no
+
+Question: Does circle moving cause octagon to move?
+State update: octagon is moving, circle is moving
+[hold] circle
+State update: octagon is moving, circle is moving
+[move] octagon
+State update: octagon is moving, circle is moving
+Final Answer: No
+
+Question: Does ellipse moving cause hexagon to move?
+State update: hexagon is moving, ellipse is moving
+[hold] ellipse
+State update: hexagon is moving, ellipse is moving
+[release] ellipse
+State update: hexagon is moving, ellipse is moving
+Final Answer: possibly
+
+Question: Does pentagon moving cause octagon to move?
+State update: pentagon is moving, octagon is moving
+[hold] pentagon
+State update: pentagon is static, octagon is static
+Final Answer: no
+
+Question: Does octagon moving cause pentagon to move?
+State update: pentagon is moving, octagon is moving
+[hold] octagon
+State update: pentagon is moving, octagon is moving
+[move] pentagon
+State update: pentagon is moving, octagon is moving
+Final Answer: No
+
+Question: Does pentagon moving cause octagon to move?
+State update: pentagon is static, octagon is moving
+[move] pentagon
+State update: pentagon is moving, octagon is moving
+[move] octagon
+State update: pentagon is moving, octagon is moving
+Final Answer: no
+
+Question: Does octagon moving cause pentagon to move?
+State update: pentagon is static, octagon is moving
+[hold] octagon
+State update: pentagon is static, octagon is static
+Final Answer: No
+
+Question: Does square moving cause octagon to move?
+State update: square is moving, octagon is moving
+[hold] square
+State update: square is static, octagon is static
+Final Answer: no
+
+Question: Does square moving cause octagon to move?
+State update: square is static, octagon is moving
+[move] square
+State update: square is moving, octagon is moving
+[hold] square
+State update: square is static, octagon is static
+Final Answer: no
+
+Question: Does rectangle moving cause circle to move?
+State update: rectangle is moving, circle is moving
+[hold] rectangle
+State update: rectangle is static, circle is static
+[hold] circle
+State update: rectangle is static, circle is static
+Final Answer: no
+
+Question: Does octagon moving cause circle to move?
+State update: octagon is moving, circle is moving
+[hold] octagon
+State update: octagon is static, circle is static
+Final Answer: Possibly
+
+Question: Does circle moving cause octagon to move?
+State update: octagon is moving, circle is moving
+[hold] circle
+State update: octagon is moving, circle is moving
+[move] octagon
+State update: octagon is moving, circle is moving
+Final Answer: No
+
+Question: Does pentagon moving cause ellipse to move?
+State update: pentagon is static, ellipse is moving
+[move] pentagon
+State update: pentagon is moving, ellipse is moving
+Final Answer: no
+
+Question: Does ellipse moving cause triangle to move?
+State update: ellipse is static, triangle is moving
+[move] ellipse
+State update: ellipse is moving, triangle is moving
+[hold] ellipse
+State update: ellipse is static, triangle is static
+Final Answer: No
+
+Question: Does triangle moving cause ellipse to move?
+State update: ellipse is static, triangle is moving
+[hold] triangle
+State update: ellipse is static, triangle is static
+Final Answer: Not determined
+

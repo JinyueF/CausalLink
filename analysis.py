@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Load the CSV data into a DataFrame
-df = pd.read_csv("./results/test_basic/hf-llama-31-8.csv")  # Replace with your file path
+df = pd.read_csv("./results/test_basic_limit_step/Llama-3.1-Nemotron-70B-Instruct-HF.csv")  # Replace with your file path
 
 # Clean the data (handle empty/missing values in the 'error' column)
 df['error'] = df['error'].fillna('No error')
@@ -43,3 +43,9 @@ n_step_analysis = df.groupby(['structure', 'setup']).agg({
 })
 print("\nStep Count Analysis:")
 print(n_step_analysis)
+
+accuracy_setup_analysis = df.groupby(['structure', 'setup']).agg({
+    'accuracy': ['mean']
+})
+print("\nStep Count Analysis:")
+print(accuracy_setup_analysis)
