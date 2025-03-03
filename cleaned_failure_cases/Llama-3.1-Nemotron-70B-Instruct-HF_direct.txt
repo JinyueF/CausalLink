@@ -1,8 +1,0 @@
-Question: Does square moving cause triangle to move?
-State update: square is static, triangle is moving
-[move] square
-State update: square is moving, triangle is moving
-[hold] square
-State update: square is static, triangle is static
-Final Answer: no
-

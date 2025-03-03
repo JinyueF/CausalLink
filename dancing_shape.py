@@ -1,15 +1,9 @@
 import itertools
 import networkx as nx
-import torch
-import transformers
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
-from openai import OpenAI
-from google import genai
 
 import random
 import json
 import re
-import os
 
 from prompt_templates import TEMPLATES
 from utils import save_checkpoint, load_checkpoint, purge_checkpoint
@@ -130,15 +124,21 @@ class CausalWorld:
 
             
 class ShapeWorld(CausalWorld):
-    def __init__(self, causal_structure, causal_flag, prompt_template, model, actions=None, changes=None, shapes=None, num_var=None) -> None:
+    def __init__(self, causal_structure, causal_flag, prompt_template, 
+                 model_name, pipeline_handler,
+                 actions=None, changes=None, shapes=None, num_var=None,
+                 experiment_ver=None) -> None:
         super().__init__(causal_structure, causal_flag, num_var)
         self.generate_variables(actions, changes, shapes)
+        self.template = prompt_template
         self.prompt_templates = TEMPLATES[prompt_template]
-        self.model = model
+        self.pipeline_handler = pipeline_handler
         self.active_shapes = []
         self.result = None
         self.error_mode = None
-        self.checkpoint_path = "./checkpoints/{}_{}_shape_world.pkl".format(model, prompt_template)
+        self.model_name = model_name
+        self.checkpoint_path = "./checkpoints/{}_{}_shape_world.pkl".format(model_name, prompt_template)
+        self.experiment_ver = experiment_ver
 
 
     def generate_variables(self, actions, changes, shapes):
@@ -249,74 +249,14 @@ class ShapeWorld(CausalWorld):
         return prompt
     
 
-    def collect_response(self, prompt, pipe):
-
-        if self.model == 'human':
-            response = input(prompt).lower()
-            parsed = self.parse_intervention(response)
-            step = 0
-            while not parsed and step < 3:
-                response = input("Invalid input, please try again").lower()
-                parsed = self.parse_intervention(response)
-                step += 1
-        elif self.model.startswith('hf'):
-            if type(prompt) is list:
-                self.chat = prompt
-            else:
-                self.chat.append(prompt)
-            raw_response = pipe(self.chat, max_new_tokens=2048)
-            self.chat = raw_response[0]['generated_text']
-            response = raw_response[0]['generated_text'][-1]['content']
-            parsed = self.parse_intervention(response)
-        elif self.model.startswith('openai'):
-            if type(prompt) is list:
-                self.chat = prompt
-            else:
-                self.chat.append(prompt)
-            oa_model = self.model.split('_')[1]
-            raw_response = pipe.chat.completions.create(
-                model=oa_model,
-                messages=self.chat
-            )
-            response = raw_response.choices[0].message.content
-            self.chat.append({"role":'assistant', "content":response})
-            parsed = self.parse_intervention(response)
-        elif self.model.startswith('deepseek'):
-            if type(prompt) is list:
-                self.chat = prompt
-            else:
-                self.chat.append(prompt)
-            raw_response = pipe.chat.completions.create(
-                model=self.model,
-                messages=self.chat,
-                temperature=0.6
-            )
-            response = raw_response.choices[0].message.content
-            self.chat.append({"role":'assistant', "content":response})
-            parsed = self.parse_intervention(response)
-        elif self.model.startswith('gemini'):
-            if type(prompt) is list:
-                self.chat = prompt
-            else:
-                self.chat.append(prompt)
-            curr_prompt = self.chat[-1]['content']
-            response = pipe.send_message(curr_prompt).text
-            self.chat.append({"role":"assistant", "content":response})
-            parsed = self.parse_intervention(response)
+    def collect_response(self, prompt):
+        if type(prompt) is list:
+            self.chat = prompt
         else:
-            if type(prompt) is list:
-                self.chat = prompt
-            else:
-                self.chat.append(prompt)
-            raw_response = pipe.chat.completions.create(
-                model=self.model,
-                messages=self.chat,
-                temperature=0.6
-            )
-            response = raw_response.choices[0].message.content
-            self.chat.append({"role":'assistant', "content":response})
-            parsed = self.parse_intervention(response)
-                
+            self.chat.append(prompt)
+        
+        response, self.chat = self.pipeline_handler.collect_response(self.chat)
+        parsed = self.parse_intervention(response)
 
         return parsed
     
@@ -345,28 +285,13 @@ class ShapeWorld(CausalWorld):
         Performs interaction for the question does cause cause effect?
         """
         self.active_shapes = initial_active_shapes
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = self.model
         self.question = "Does {} moving cause {} to move?".format(cause, effect)
         self.answer = self.check_causal_path(self.shapes.index(cause), self.shapes.index(effect))
 
-        if model.startswith('hf'):
-            pipe = pipeline("text-generation", model_path, torch_dtype=torch.float16, device_map="auto", temperature=0.6)
-        elif model == 'human':
-            pipe = None
-        elif model.startswith('openai'):
-            pipe = OpenAI()
-        elif model.startswith('deepseek'):
-            pipe = OpenAI(api_key=os.environ['DEEPSEEK_API_KEY'], base_url="https://api.deepseek.com/v1")
-        elif model.startswith('gemini'):
-            client = genai.Client(api_key=os.environ['GOOGLE_API_KEY'], http_options={'api_version':'v1alpha'})
-            pipe = client.chats.create(model=self.model)
-        else:
-            pipe = OpenAI(api_key='EMPTY', base_url=model_path)
 
         curr_state = "initial"
         initial_prompt = self.generate_prompt(curr_state)
-        response = self.collect_response(initial_prompt, pipe)
+        response = self.collect_response(initial_prompt)
         step = 0
         max_step = len(self.shapes) * len(self.actions)
 
@@ -377,7 +302,7 @@ class ShapeWorld(CausalWorld):
                 break
             if curr_state == "interaction":
                 step += 1
-            response = self.collect_response(prompt, pipe)
+            response = self.collect_response(prompt)
 
         if not response:
             self.error_mode = "invalid format"
@@ -394,7 +319,7 @@ class ShapeWorld(CausalWorld):
     
 
     def get_initial_setups(self):
-        if len(self.shapes) < 4:
+        if self.experiment_ver == 'comprehensive':
             nodes = list(self.causal_graph.nodes())
             node_and_descendants = [
                 [n] + list(nx.descendants(self.causal_graph, n)) for n in nodes]
@@ -405,17 +330,85 @@ class ShapeWorld(CausalWorld):
             
             for i in range(len(setups)):
                 setups[i] = frozenset(itertools.chain(*setups[i]))
-        else:
+        elif self.experiment_ver == 'hard':
             setups = [frozenset(range(len(self.shapes)))]
+        else:
+            setups = []
         
-        print(setups)
         return set(setups)
+    
+    def _run_experiment_comprehensive(self, setup, processed_setups, result_table, model_path, error_log_path):
         
+        for (var_1, var_2) in itertools.combinations(self.shapes, 2):
+            for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
+                if (frozenset(setup), cause, effect) in processed_setups:
+                    continue
+                self.error_mode = None
+                
+                error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
+                result_table['structure'].append(self.causal_structure)
+                result_table['setup'].append(setup)
+                result_table['cause'].append(cause)
+                result_table['effect'].append(effect)
+                result_table['ground_truth'].append(self.answer)
+                result_table['error'].append(error)
+                result_table['result'].append(result)
+                result_table['n_step'].append(step)
+
+                if not result:
+                    log_entry = {
+                        "error": self.error_mode,
+                        "cause": cause,
+                        "effect": effect,
+                        "setup": list(setup),
+                        "conversational_history": self.chat if hasattr(self, 'chat') else []
+                    }
+                    with open(error_log_path, "a") as log:
+                        log.write(json.dumps(log_entry) + "\n")
+
+                processed_setups.add((frozenset(setup), cause, effect))
+
+        
+    def _run_experiment_hard(self, setup, processed_setups, result_table, model_path, error_log_path):
+        sample = random.sample(list(itertools.combinations(self.shapes, 2)), 6)
+        for (cause, effect) in sample:
+            if (frozenset(setup), cause, effect) in processed_setups:
+                continue
+            self.error_mode = None
+            
+            error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
+            entries = {
+                'structure': self.causal_structure,
+                'setup': setup,
+                'cause': cause,
+                'effect': effect,
+                'ground_truth': self.answer,
+                'error': error,
+                'result': result,
+                'n_step': step,
+            }
+
+            for key, value in entries.items():
+                result_table[key].append(value)
+
+            if not result:
+                log_entry = {
+                    "error": self.error_mode,
+                    "cause": cause,
+                    "effect": effect,
+                    "setup": list(setup),
+                    "conversational_history": self.chat if hasattr(self, 'chat') else []
+                }
+                with open(error_log_path, "a") as log:
+                    log.write(json.dumps(log_entry) + "\n")
+
+            processed_setups.add((frozenset(setup), cause, effect))
+                    
 
     def run_experiment(self, model_path=None):
 
         checkpoint = load_checkpoint(self.checkpoint_path)
-        error_log_path = "./failure_cases/{}_{}.jsonl".format(self.model, self.causal_structure)
+        error_log_path = "./failure_cases/{}_{}_{}.jsonl".format(self.model_name, self.causal_structure, self.template)
         if checkpoint:
             result_table = checkpoint['result_table']
             processed_setups = checkpoint['processed_setups']
@@ -427,41 +420,15 @@ class ShapeWorld(CausalWorld):
             setups = self.get_initial_setups()
 
         for setup in setups:
-            for (var_1, var_2) in itertools.combinations(self.shapes, 2):
-                for (cause, effect) in [(var_1, var_2), (var_2, var_1)]:
-                    if (frozenset(setup), cause, effect) in processed_setups:
-                        continue
-                    self.error_mode = None
-                    
-                    error, result, step = self.interaction_loop(list(setup), cause, effect, model_path)
-                    result_table['structure'].append(self.causal_structure)
-                    result_table['setup'].append(setup)
-                    result_table['cause'].append(cause)
-                    result_table['effect'].append(effect)
-                    result_table['ground_truth'].append(self.answer)
-                    result_table['error'].append(error)
-                    result_table['result'].append(result)
-                    result_table['n_step'].append(step)
-
-                    if not result:
-                        log_entry = {
-                            "error": self.error_mode,
-                            "cause": cause,
-                            "effect": effect,
-                            "setup": list(setup),
-                            "conversational_history": self.chat if hasattr(self, 'chat') else []
-                        }
-                        with open(error_log_path, "a") as log:
-                            log.write(json.dumps(log_entry) + "\n")
-
-                    processed_setups.add((frozenset(setup), cause, effect))
-                
-                    # Save checkpoint
-                    save_checkpoint(self.checkpoint_path, {
-                        'result_table': result_table,
-                        'processed_setups': processed_setups,
-                        'setups': setups
-                    })
+            if self.experiment_ver == "comprehensive":
+                self._run_experiment_comprehensive(setup, processed_setups, result_table, model_path, error_log_path)
+            elif self.experiment_ver == "hard":
+                self._run_experiment_hard(setup, processed_setups, result_table, model_path, error_log_path)
+            save_checkpoint(self.checkpoint_path, {
+                'result_table': result_table,
+                'processed_setups': processed_setups,
+                'setups': setups
+            })
         
         purge_checkpoint(self.checkpoint_path)
         
