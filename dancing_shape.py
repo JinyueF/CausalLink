@@ -132,6 +132,7 @@ class ShapeWorld(CausalWorld):
         self.generate_variables(actions, changes, shapes)
         self.template = prompt_template
         self.prompt_templates = TEMPLATES[prompt_template]
+        print(self.prompt_templates)
         self.pipeline_handler = pipeline_handler
         self.active_shapes = []
         self.result = None
@@ -232,11 +233,11 @@ class ShapeWorld(CausalWorld):
             first_section_prompt = ''
             json_prompt = self.prompt_templates['answer'].format(self.question)
         
-        if self.model == "human":
+        if self.model_name == "human":
             prompt = '\n'.join([first_section_prompt, json_prompt])
         else:
             if state == 'initial':
-                if 'deepseek' in self.model or 'mistral' in self.model:
+                if 'deepseek' in self.model_name or 'mistral' in self.model_name:
                     prompt = [{"role": "user", "content": '\n'.join([first_section_prompt, json_prompt])}]
                 else:
                     prompt = [
@@ -424,6 +425,7 @@ class ShapeWorld(CausalWorld):
                 self._run_experiment_comprehensive(setup, processed_setups, result_table, model_path, error_log_path)
             elif self.experiment_ver == "hard":
                 self._run_experiment_hard(setup, processed_setups, result_table, model_path, error_log_path)
+
             save_checkpoint(self.checkpoint_path, {
                 'result_table': result_table,
                 'processed_setups': processed_setups,

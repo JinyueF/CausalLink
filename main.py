@@ -45,8 +45,8 @@ def generate_dataset(num_rep, structures, all_shapes, min_num_var=4, max_num_var
     return df
 
 
-def run_experiments(dataset_df, source, model, model_path, prompt_template_name, checkpoint_path):
-    dataset = dataset_df.values.tolist()
+def run_experiments(dataset_df, source, model, model_path, prompt_template_name, checkpoint_path, args):
+    dataset = dataset_df
     result_table = {}
 
     checkpoint = load_checkpoint(checkpoint_path)
@@ -61,10 +61,10 @@ def run_experiments(dataset_df, source, model, model_path, prompt_template_name,
         causal_structure, causal_flag, shapes, num_var = tuple(dataset.iloc[row_num, :])
         shapes = literal_eval(shapes) if type(shapes) is str else shapes
         api_key = os.environ[args.api_key] if args.api_key else ''
-        pipeline_handler = PipelineHandler(source, model_path, api_key, args.temperature)
+        pipeline_handler = PipelineHandler(source, model, model_path, api_key, args.temperature)
         s_world = ShapeWorld(
             causal_structure, causal_flag, prompt_template_name, model,
-            pipeline_handler, shapes=shapes, num_var=num_var)
+            pipeline_handler, shapes=shapes, num_var=num_var, experiment_ver="comprehensive")
         curr_result = s_world.run_experiment(model_path)
         if result_table == {}:
             result_table = curr_result
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, help="Path to the csv file containing the dataset.")
     parser.add_argument('--result_path', type=str, help="Path to the csv file containing the results.")
-    parser.add_argument('--source', type=str,
+    parser.add_argument('--source', type=str, default='huggingface', 
                         help="The source of the model being tested.",
                         choices=['huggingface', 'google', 'deepseek', 'vec-inf'])
     parser.add_argument('--model', type=str,
@@ -94,7 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_path', type=str,
                         help="Model paths for huggingface models or base urls for API calls.")
     parser.add_argument('--api_key', type=str, help="Name of environmental variable storing the API key.")
-    parser.add_argument('--temperature', type=float, help="Generation temperature for the model.")
+    parser.add_argument('--temperature', type=float, default=0.6, help="Generation temperature for the model.")
     parser.add_argument('--num_rep', type=int, default=1, help="Number of repitition of experiments. Default to 1.")
     parser.add_argument('--prompt_template', type=str,
                         help="Name of the prompting template. Must be one of the key names in prompting_template.py.")
@@ -111,5 +111,5 @@ if __name__ == '__main__':
         data_df = generate_dataset(args.num_rep, structures, shapes)
         data_df.to_csv(args.data_path, index=True)
 
-    result_df = run_experiments(data_df, args.source, args.model, args.model_path, args.prompt_template, checkpoint_path)
+    result_df = run_experiments(data_df, args.source, args.model, args.model_path, args.prompt_template, checkpoint_path, args)
     result_df.to_csv(args.result_path, index=True)

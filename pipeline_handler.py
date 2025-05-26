@@ -17,7 +17,7 @@ class PipelineHandler:
             'huggingface':{
                 'func': pipeline,
                 'args':{
-                    'task': 'text-generation', 'model': model_path, 'torch_dytype': torch.float16, 'device_map': 'auto'
+                    'task': 'text-generation', 'model': model_path, 'torch_dtype': torch.float16, 'device_map': 'auto'
                 }
             },
             'openai':{
