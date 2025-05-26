@@ -84,12 +84,6 @@ To support new model sources, extend `pipeline_handler.py` with your own code. P
 
 ---
 
-## 📄 License
-
-*Specify your license here, e.g., MIT, Apache-2.0, etc.*
-
----
-
 ## ✏️ Citation
 
 If you use this framework in your work, please cite:
